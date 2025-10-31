@@ -1,0 +1,1590 @@
+<!doctype html>
+<html lang="pt-BR">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Geometria 3D Pro - Projeções Ortogonais</title>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.29.0/feather.min.css" rel="stylesheet">
+  <style>
+        body {
+            box-sizing: border-box;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-dark: #0A192F;
+            --primary-medium: #1E3A8A;
+            --primary-light: #93C5FD;
+            --accent-blue: #3B82F6;
+            --text-light: #E2E8F0;
+            --text-dark: #1E293B;
+            --surface-dark: #1E293B;
+            --surface-light: #F8FAFC;
+            --glass-bg: rgba(59, 130, 246, 0.1);
+            --glass-border: rgba(147, 197, 253, 0.2);
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-medium) 50%, #1E40AF 100%);
+            color: var(--text-light);
+            min-height: 100%;
+            overflow-x: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.light-mode {
+            background: linear-gradient(135deg, var(--surface-light) 0%, #E0F2FE 50%, #BAE6FD 100%);
+            color: var(--text-dark);
+        }
+
+        /* Animated background particles */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: var(--primary-light);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(180deg); }
+        }
+
+        /* Glass morphism effects */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+        }
+
+        .light-mode .glass {
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 20px 0;
+            transition: all 0.4s ease;
+        }
+
+        .header.scrolled {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 40px;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(45deg, var(--primary-light), #60A5FA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-light);
+            font-weight: 500;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .light-mode .nav-links a {
+            color: var(--text-dark);
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-light);
+            transform: translateY(-2px);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary-light);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .theme-toggle {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            color: var(--text-light);
+            padding: 12px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .light-mode .theme-toggle {
+            color: var(--text-dark);
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-top: 100px;
+        }
+
+        .section {
+            display: none;
+            animation: slideIn 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: calc(100% - 100px);
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(30px);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0);
+            }
+        }
+
+        /* Home Section */
+        .hero {
+            text-align: center;
+            padding: 80px 40px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero-title {
+            font-size: clamp(48px, 8vw, 72px);
+            font-weight: 800;
+            margin-bottom: 24px;
+            background: linear-gradient(45deg, var(--primary-light), #60A5FA, #DBEAFE);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1.1;
+            letter-spacing: -1px;
+        }
+
+        .hero-subtitle {
+            font-size: clamp(18px, 3vw, 24px);
+            margin-bottom: 50px;
+            opacity: 0.9;
+            font-weight: 400;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.6;
+        }
+
+        .cube-container {
+            height: 500px;
+            margin: 60px 0;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cube-wrapper {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+
+        .cube-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+            50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.6; }
+        }
+
+        .cta-button {
+            background: linear-gradient(45deg, var(--accent-blue), var(--primary-medium));
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.4);
+        }
+
+        .cta-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .cta-button:hover::before {
+            left: 100%;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 40px;
+            margin-top: 100px;
+            padding: 0 40px;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .feature-card {
+            padding: 40px;
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .feature-icon {
+            font-size: 64px;
+            margin-bottom: 24px;
+            background: linear-gradient(45deg, var(--primary-light), #60A5FA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .feature-card h3 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--primary-light);
+        }
+
+        .light-mode .feature-card h3 {
+            color: var(--primary-medium);
+        }
+
+        .feature-card p {
+            opacity: 0.8;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        /* Content Sections */
+        .content-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        .section-title {
+            font-size: clamp(36px, 6vw, 48px);
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 60px;
+            background: linear-gradient(45deg, var(--primary-light), #60A5FA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Lessons Section */
+        .lesson-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+        }
+
+        .lesson-card {
+            padding: 40px;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lesson-card:hover {
+            transform: translateY(-8px);
+        }
+
+        .lesson-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--primary-light));
+        }
+
+        .lesson-card h3 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--primary-light);
+        }
+
+        .light-mode .lesson-card h3 {
+            color: var(--primary-medium);
+        }
+
+        .lesson-card p {
+            line-height: 1.7;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .lesson-card ul {
+            padding-left: 20px;
+        }
+
+        .lesson-card li {
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        /* Quiz Section */
+        .quiz-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .question-card {
+            padding: 50px;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .question-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--primary-light));
+        }
+
+        .question-text {
+            font-size: 20px;
+            margin-bottom: 30px;
+            font-weight: 500;
+            line-height: 1.6;
+        }
+
+        .options {
+            display: grid;
+            gap: 16px;
+        }
+
+        .option {
+            padding: 20px 24px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+            font-weight: 500;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option:hover {
+            border-color: var(--accent-blue);
+            transform: translateX(8px);
+        }
+
+        .option.selected {
+            background: var(--accent-blue);
+            color: white;
+            border-color: var(--accent-blue);
+        }
+
+        .option.correct {
+            background: #10B981;
+            color: white;
+            border-color: #10B981;
+        }
+
+        .option.incorrect {
+            background: #EF4444;
+            color: white;
+            border-color: #EF4444;
+        }
+
+        .quiz-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 40px;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, var(--accent-blue), var(--primary-medium));
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn:disabled {
+            background: #64748B;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .score-display {
+            font-size: 20px;
+            font-weight: 600;
+            padding: 12px 24px;
+            border-radius: 25px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+        }
+
+        /* Timer */
+        .timer-display {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .timer {
+            font-size: 48px;
+            font-weight: 800;
+            background: linear-gradient(45deg, var(--primary-light), #60A5FA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+        }
+
+        .timer-label {
+            font-size: 18px;
+            opacity: 0.8;
+        }
+
+        /* About Section */
+        .about-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .about-card {
+            padding: 50px;
+            margin-bottom: 40px;
+        }
+
+        .about-card h3 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: var(--primary-light);
+        }
+
+        .light-mode .about-card h3 {
+            color: var(--primary-medium);
+        }
+
+        .about-card h4 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 30px 0 16px 0;
+            color: var(--accent-blue);
+        }
+
+        .about-card p {
+            line-height: 1.8;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+
+        .about-card ul {
+            padding-left: 24px;
+            margin-bottom: 20px;
+        }
+
+        .about-card li {
+            margin-bottom: 12px;
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .nav {
+                padding: 0 20px;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+
+            .hero {
+                padding: 60px 20px;
+            }
+
+            .cube-container {
+                height: 350px;
+                margin: 40px 0;
+            }
+
+            .cube-wrapper {
+                width: 300px;
+                height: 300px;
+            }
+
+            .features-grid {
+                grid-template-columns: 1fr;
+                padding: 0 20px;
+                gap: 30px;
+            }
+
+            .lesson-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .content-container {
+                padding: 40px 20px;
+            }
+
+            .question-card {
+                padding: 30px 20px;
+            }
+
+            .quiz-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .timer {
+                font-size: 36px;
+            }
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(147, 197, 253, 0.3);
+            border-top: 3px solid var(--primary-light);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body><!-- Animated background particles -->
+  <div class="bg-particles" id="particles"></div>
+  <header class="header" id="header">
+   <nav class="nav"><a href="#" class="logo">Geometria 3D Pro</a>
+    <ul class="nav-links">
+     <li><a onclick="showSection('home')">Home</a></li>
+     <li><a onclick="showSection('lessons')">Aulas</a></li>
+     <li><a onclick="showSection('quiz')">Questões ENEM</a></li>
+     <li><a onclick="showSection('simulator')">Simulados</a></li>
+     <li><a onclick="showSection('about')">Sobre</a></li>
+    </ul><button class="theme-toggle" onclick="toggleTheme()"> <span id="theme-icon">🌙</span> <span id="theme-text">Modo Escuro</span> </button>
+   </nav>
+  </header>
+  <main class="main-content"><!-- Home Section -->
+   <section id="home" class="section active">
+    <div class="hero">
+     <h1 class="hero-title" id="main-title">Entenda Projeções e Vistas em 3D</h1>
+     <p class="hero-subtitle" id="main-subtitle">Aprenda geometria espacial com visualização interativa e questões do ENEM.</p>
+     <div class="cube-container">
+      <div class="cube-wrapper">
+       <div class="cube-glow"></div>
+       <div id="cube-3d"></div>
+      </div>
+     </div><button class="cta-button" id="cta-button" onclick="showSection('lessons')">Começar a estudar</button>
+     <div class="features-grid">
+      <div class="feature-card glass">
+       <div class="feature-icon">
+        🎯
+       </div>
+       <h3>Visualização 3D Avançada</h3>
+       <p>Explore projeções ortogonais com nosso cubo 3D transparente e interativo de alta qualidade</p>
+      </div>
+      <div class="feature-card glass">
+       <div class="feature-icon">
+        📚
+       </div>
+       <h3>Conteúdo Completo</h3>
+       <p>Teoria detalhada e prática com exemplos reais do ENEM e principais vestibulares</p>
+      </div>
+      <div class="feature-card glass">
+       <div class="feature-icon">
+        🧠
+       </div>
+       <h3>Questões Autênticas</h3>
+       <p>Pratique com questões reais do ENEM e receba feedback imediato com explicações visuais</p>
+      </div>
+     </div>
+    </div>
+   </section><!-- Lessons Section -->
+   <section id="lessons" class="section">
+    <div class="content-container">
+     <h2 class="section-title">Aulas Interativas</h2>
+     <div class="lesson-grid">
+      <div class="lesson-card glass">
+       <h3>1. Fundamentos das Projeções</h3>
+       <p>Compreenda os conceitos fundamentais de projeção ortogonal e sua aplicação na geometria espacial. Aprenda a diferença entre projeções paralelas e perspectivas.</p>
+       <ul>
+        <li>Definição e propriedades das projeções ortogonais</li>
+        <li>Planos de projeção e sistemas de coordenadas</li>
+        <li>Direções de projeção e ângulos de visualização</li>
+        <li>Aplicações práticas em engenharia e arquitetura</li>
+       </ul>
+      </div>
+      <div class="lesson-card glass">
+       <h3>2. Vista Frontal</h3>
+       <p>A vista frontal é a projeção principal que revela a forma característica do objeto. Domine as técnicas de representação e interpretação.</p>
+       <ul>
+        <li>Posicionamento correto do observador</li>
+        <li>Identificação de elementos visíveis e ocultos</li>
+        <li>Representação de arestas e contornos</li>
+        <li>Proporções e medidas na vista frontal</li>
+       </ul>
+      </div>
+      <div class="lesson-card glass">
+       <h3>3. Vista Superior</h3>
+       <p>Explore a vista superior para compreender a distribuição espacial e detalhes da base dos objetos tridimensionais.</p>
+       <ul>
+        <li>Projeção no plano horizontal superior</li>
+        <li>Identificação de formas e padrões</li>
+        <li>Análise de medidas e proporções</li>
+        <li>Relação com outras vistas ortogonais</li>
+       </ul>
+      </div>
+      <div class="lesson-card glass">
+       <h3>4. Vistas Laterais</h3>
+       <p>As vistas laterais direita e esquerda complementam a compreensão tridimensional, revelando profundidade e espessura.</p>
+       <ul>
+        <li>Vista lateral direita e suas características</li>
+        <li>Vista lateral esquerda e aplicações</li>
+        <li>Análise de profundidade e espessura</li>
+        <li>Coordenação entre múltiplas vistas</li>
+       </ul>
+      </div>
+      <div class="lesson-card glass">
+       <h3>5. Estratégias para o ENEM</h3>
+       <p>Técnicas específicas para resolver questões de projeções ortogonais no ENEM e principais vestibulares do país.</p>
+       <ul>
+        <li>Padrões de questões mais frequentes</li>
+        <li>Estratégias de resolução rápida</li>
+        <li>Identificação de pegadinhas comuns</li>
+        <li>Gerenciamento de tempo na prova</li>
+       </ul>
+      </div>
+      <div class="lesson-card glass">
+       <h3>6. Prática Avançada</h3>
+       <p>Exercícios progressivos e desafios para consolidar todo o conhecimento adquirido nas aulas anteriores.</p>
+       <ul>
+        <li>Exercícios básicos de fixação</li>
+        <li>Problemas de nível intermediário</li>
+        <li>Desafios avançados e competitivos</li>
+        <li>Simulações de situações reais</li>
+       </ul>
+      </div>
+     </div>
+    </div>
+   </section><!-- Quiz Section -->
+   <section id="quiz" class="section">
+    <div class="content-container">
+     <h2 class="section-title">Questões do ENEM</h2>
+     <div class="quiz-container">
+      <div class="question-card glass" id="question-card">
+       <div class="question-text" id="question-text">
+        Carregando questão...
+       </div>
+       <div class="options" id="options"></div>
+      </div>
+      <div class="quiz-controls">
+       <div class="score-display">
+        Acertos: <span id="score">0</span>/<span id="total">0</span>
+       </div>
+       <div><button class="btn" id="prev-btn" onclick="previousQuestion()" disabled>← Anterior</button> <button class="btn" id="next-btn" onclick="nextQuestion()" style="margin-left: 16px;">Próxima →</button>
+       </div>
+      </div>
+     </div>
+    </div>
+   </section><!-- Simulator Section -->
+   <section id="simulator" class="section">
+    <div class="content-container">
+     <h2 class="section-title">Simulados Cronometrados</h2>
+     <div class="quiz-container">
+      <div class="timer-display">
+       <div class="timer" id="timer">
+        15:00
+       </div>
+       <div class="timer-label">
+        Tempo restante
+       </div>
+      </div>
+      <div class="question-card glass" id="sim-question-card">
+       <div class="question-text" id="sim-question-text">
+        Clique em "Iniciar Simulado" para começar o teste cronometrado
+       </div>
+       <div class="options" id="sim-options"></div>
+      </div>
+      <div class="quiz-controls">
+       <div class="score-display">
+        Questão: <span id="sim-current">0</span>/<span id="sim-total">10</span>
+       </div>
+       <div><button class="btn" id="start-sim-btn" onclick="startSimulator()">Iniciar Simulado</button> <button class="btn" id="sim-next-btn" onclick="nextSimQuestion()" style="margin-left: 16px; display: none;">Próxima →</button>
+       </div>
+      </div>
+     </div>
+    </div>
+   </section><!-- About Section -->
+   <section id="about" class="section">
+    <div class="content-container">
+     <h2 class="section-title">Sobre o Projeto</h2>
+     <div class="about-content">
+      <div class="about-card glass">
+       <h3>Geometria 3D Pro</h3>
+       <p>Uma plataforma educacional de última geração desenvolvida para revolucionar o aprendizado de projeções ortogonais e geometria espacial. Utilizamos tecnologia 3D avançada para tornar conceitos abstratos em experiências visuais imersivas.</p>
+       <h4>🎯 Missão do Projeto</h4>
+       <ul>
+        <li>Democratizar o acesso ao ensino de geometria espacial de qualidade</li>
+        <li>Facilitar a visualização tridimensional através de modelos interativos</li>
+        <li>Preparar estudantes para o ENEM e vestibulares com excelência</li>
+        <li>Desenvolver o raciocínio espacial e habilidades visuais</li>
+       </ul>
+       <h4>🚀 Inovação Tecnológica</h4>
+       <p>Nossa plataforma utiliza WebGL e Three.js para renderização 3D em tempo real, proporcionando uma experiência imersiva que simula laboratórios de geometria profissionais. O cubo transparente com rotação automática permite visualizar todas as projeções simultaneamente.</p>
+       <h4>📊 Impacto Educacional</h4>
+       <p>As projeções ortogonais são fundamentais em diversas áreas do conhecimento, desde arquitetura e engenharia até design industrial e matemática aplicada. Nosso método visual acelera a compreensão e melhora significativamente o desempenho dos estudantes.</p>
+       <h4>🛠️ Tecnologias Utilizadas</h4>
+       <ul>
+        <li>Three.js para renderização 3D avançada</li>
+        <li>WebGL para performance otimizada</li>
+        <li>CSS3 com efeitos glass morphism</li>
+        <li>JavaScript ES6+ para interatividade</li>
+        <li>Design responsivo para todos os dispositivos</li>
+        <li>Animações suaves com CSS animations</li>
+       </ul>
+      </div>
+     </div>
+    </div>
+   </section>
+  </main>
+  <script>
+        // Configuration and SDK setup
+        const defaultConfig = {
+            main_title: "Entenda Projeções e Vistas em 3D",
+            main_subtitle: "Aprenda geometria espacial com visualização interativa e questões do ENEM.",
+            cta_button_text: "Começar a estudar",
+            primary_color: "#3B82F6",
+            background_color: "#0A192F", 
+            surface_color: "#1E293B",
+            font_family: "Poppins",
+            font_size: 16
+        };
+
+        let scene, camera, renderer, cube, animationId;
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let userAnswers = [];
+        let simulatorActive = false;
+        let simulatorTimer = null;
+        let simulatorTimeLeft = 900; // 15 minutes
+        let simulatorQuestions = [];
+        let simulatorCurrentIndex = 0;
+        let currentRecordCount = 0;
+
+        // Sample questions database
+        const questions = [
+            {
+                id: "q1",
+                text: "Observe um cubo posicionado de forma que uma de suas faces seja paralela ao plano de projeção frontal. Qual das alternativas representa corretamente a vista superior deste cubo?",
+                options: [
+                    "Um quadrado com todas as arestas visíveis em linha contínua",
+                    "Um quadrado com diagonais tracejadas representando arestas ocultas", 
+                    "Um retângulo alongado mostrando deformação perspectiva",
+                    "Um hexágono regular com seis lados iguais",
+                    "Um círculo representando a projeção circular"
+                ],
+                correct: 0
+            },
+            {
+                id: "q2", 
+                text: "Em uma projeção ortogonal, as linhas de projeção (linhas que conectam pontos do objeto ao plano de projeção) são caracterizadas por serem:",
+                options: [
+                    "Paralelas entre si e perpendiculares ao plano de projeção",
+                    "Convergentes para um ponto no infinito (ponto de fuga)",
+                    "Curvas que seguem a curvatura da superfície do objeto",
+                    "Paralelas ao plano de projeção, mantendo ângulo zero",
+                    "Inclinadas em 45° em relação ao plano de projeção"
+                ],
+                correct: 0
+            },
+            {
+                id: "q3",
+                text: "Qual é a principal característica que define a escolha da vista frontal de um objeto tridimensional?",
+                options: [
+                    "Mostra apenas a altura do objeto, ignorando largura e profundidade",
+                    "Revela a forma característica principal e mais representativa do objeto",
+                    "Apresenta sempre a maior dimensão do objeto em questão",
+                    "Exibe exclusivamente detalhes internos e estruturas ocultas",
+                    "Mostra o objeto em perspectiva com pontos de fuga"
+                ],
+                correct: 1
+            },
+            {
+                id: "q4",
+                text: "Na representação técnica de projeções ortogonais, as arestas que não são visíveis do ponto de vista do observador devem ser representadas por:",
+                options: [
+                    "Linhas contínuas grossas para dar destaque",
+                    "Linhas pontilhadas ou tracejadas indicando elementos ocultos", 
+                    "Linhas coloridas para diferenciação visual",
+                    "Não devem ser representadas para evitar confusão",
+                    "Linhas curvas seguindo a curvatura natural"
+                ],
+                correct: 1
+            },
+            {
+                id: "q5",
+                text: "Para representar completamente um objeto tridimensional complexo usando o sistema de projeções ortogonais, quantas vistas principais são geralmente necessárias?",
+                options: [
+                    "Uma vista é sempre suficiente para qualquer objeto",
+                    "Duas vistas são obrigatórias em todos os casos",
+                    "Três vistas principais: frontal, superior e lateral direita",
+                    "Quatro vistas são obrigatórias sem exceção", 
+                    "Seis vistas são sempre necessárias para completude"
+                ],
+                correct: 2
+            },
+            {
+                id: "q6",
+                text: "Um prisma hexagonal regular está posicionado com sua base apoiada no plano horizontal. Qual será a forma da vista superior?",
+                options: [
+                    "Um círculo perfeito",
+                    "Um hexágono regular com seis lados iguais",
+                    "Um retângulo alongado",
+                    "Um triângulo equilátero",
+                    "Um quadrado com diagonais"
+                ],
+                correct: 1
+            },
+            {
+                id: "q7",
+                text: "Na projeção ortogonal de uma pirâmide de base quadrada vista de frente, com a base paralela ao plano de projeção, a forma resultante será:",
+                options: [
+                    "Um quadrado simples",
+                    "Um triângulo isósceles",
+                    "Um trapézio com base maior embaixo",
+                    "Um losango perfeito",
+                    "Um pentágono irregular"
+                ],
+                correct: 1
+            },
+            {
+                id: "q8",
+                text: "Quando observamos um cilindro circular reto em vista lateral (perpendicular ao eixo do cilindro), a projeção ortogonal resultante é:",
+                options: [
+                    "Um círculo com o mesmo diâmetro da base",
+                    "Uma elipse alongada horizontalmente",
+                    "Um retângulo com altura igual à do cilindro",
+                    "Um trapézio com bases paralelas",
+                    "Um triângulo isósceles"
+                ],
+                correct: 2
+            }
+        ];
+
+        // Data SDK handler
+        const dataHandler = {
+            onDataChanged(data) {
+                currentRecordCount = data.length;
+                console.log(`Total de respostas salvas: ${data.length}`);
+            }
+        };
+
+        // Element SDK setup
+        async function onConfigChange(config) {
+            const mainTitle = config.main_title || defaultConfig.main_title;
+            const mainSubtitle = config.main_subtitle || defaultConfig.main_subtitle;
+            const ctaButtonText = config.cta_button_text || defaultConfig.cta_button_text;
+            const primaryColor = config.primary_color || defaultConfig.primary_color;
+            const backgroundColor = config.background_color || defaultConfig.background_color;
+            const surfaceColor = config.surface_color || defaultConfig.surface_color;
+            const fontFamily = config.font_family || defaultConfig.font_family;
+            const fontSize = config.font_size || defaultConfig.font_size;
+
+            // Update text content
+            document.getElementById('main-title').textContent = mainTitle;
+            document.getElementById('main-subtitle').textContent = mainSubtitle;
+            document.getElementById('cta-button').textContent = ctaButtonText;
+
+            // Update colors
+            document.documentElement.style.setProperty('--accent-blue', primaryColor);
+            document.documentElement.style.setProperty('--primary-dark', backgroundColor);
+            document.documentElement.style.setProperty('--surface-dark', surfaceColor);
+
+            // Update font
+            document.body.style.fontFamily = `'${fontFamily}', sans-serif`;
+            
+            // Update font sizes proportionally
+            document.documentElement.style.fontSize = `${fontSize}px`;
+        }
+
+        function mapToCapabilities(config) {
+            return {
+                recolorables: [
+                    {
+                        get: () => config.primary_color || defaultConfig.primary_color,
+                        set: (value) => {
+                            if (window.elementSdk) {
+                                window.elementSdk.setConfig({ primary_color: value });
+                            }
+                        }
+                    },
+                    {
+                        get: () => config.background_color || defaultConfig.background_color, 
+                        set: (value) => {
+                            if (window.elementSdk) {
+                                window.elementSdk.setConfig({ background_color: value });
+                            }
+                        }
+                    },
+                    {
+                        get: () => config.surface_color || defaultConfig.surface_color,
+                        set: (value) => {
+                            if (window.elementSdk) {
+                                window.elementSdk.setConfig({ surface_color: value });
+                            }
+                        }
+                    }
+                ],
+                borderables: [],
+                fontEditable: {
+                    get: () => config.font_family || defaultConfig.font_family,
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ font_family: value });
+                        }
+                    }
+                },
+                fontSizeable: {
+                    get: () => config.font_size || defaultConfig.font_size,
+                    set: (value) => {
+                        if (window.elementSdk) {
+                            window.elementSdk.setConfig({ font_size: value });
+                        }
+                    }
+                }
+            };
+        }
+
+        function mapToEditPanelValues(config) {
+            return new Map([
+                ["main_title", config.main_title || defaultConfig.main_title],
+                ["main_subtitle", config.main_subtitle || defaultConfig.main_subtitle], 
+                ["cta_button_text", config.cta_button_text || defaultConfig.cta_button_text]
+            ]);
+        }
+
+        // Initialize SDKs
+        async function initializeSDKs() {
+            try {
+                if (window.dataSdk) {
+                    const initResult = await window.dataSdk.init(dataHandler);
+                    if (!initResult.isOk) {
+                        console.error("Failed to initialize data SDK");
+                    }
+                }
+
+                if (window.elementSdk) {
+                    await window.elementSdk.init({
+                        defaultConfig,
+                        onConfigChange,
+                        mapToCapabilities,
+                        mapToEditPanelValues
+                    });
+                }
+            } catch (error) {
+                console.error("SDK initialization error:", error);
+            }
+        }
+
+        // 3D Cube setup with enhanced transparency and glow
+        function init3DCube() {
+            const container = document.getElementById('cube-3d');
+            if (!container) return;
+
+            // Scene setup
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, 400 / 400, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ 
+                alpha: true, 
+                antialias: true,
+                powerPreference: "high-performance"
+            });
+            renderer.setSize(400, 400);
+            renderer.setClearColor(0x000000, 0);
+            container.appendChild(renderer.domElement);
+
+            // Enhanced cube geometry with rounded edges
+            const geometry = new THREE.BoxGeometry(2.5, 2.5, 2.5);
+            
+            // Materials for each face with enhanced transparency
+            const materials = [
+                createEnhancedFaceMaterial('Lateral\nDireita', '#3B82F6'),
+                createEnhancedFaceMaterial('Lateral\nEsquerda', '#1E40AF'), 
+                createEnhancedFaceMaterial('Superior', '#93C5FD'),
+                createEnhancedFaceMaterial('Inferior', '#1E3A8A'),
+                createEnhancedFaceMaterial('Frontal', '#60A5FA'),
+                createEnhancedFaceMaterial('Posterior', '#2563EB')
+            ];
+
+            cube = new THREE.Mesh(geometry, materials);
+            scene.add(cube);
+
+            // Simple ambient lighting only
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+            scene.add(ambientLight);
+
+            camera.position.z = 6;
+
+            // Simple animation loop without mouse interaction
+            function animate() {
+                animationId = requestAnimationFrame(animate);
+                
+                // Auto rotation only
+                cube.rotation.x += 0.003;
+                cube.rotation.y += 0.005;
+                
+                // Subtle floating animation
+                cube.position.y = Math.sin(Date.now() * 0.001) * 0.1;
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            // Handle resize
+            window.addEventListener('resize', () => {
+                if (container.clientWidth > 0 && container.clientHeight > 0) {
+                    renderer.setSize(400, 400);
+                }
+            });
+        }
+
+        function createEnhancedFaceMaterial(text, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const context = canvas.getContext('2d');
+            
+            // Create gradient background
+            const gradient = context.createLinearGradient(0, 0, 512, 512);
+            gradient.addColorStop(0, color);
+            gradient.addColorStop(1, adjustBrightness(color, -20));
+            
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, 512, 512);
+            
+            // Add subtle pattern
+            context.fillStyle = 'rgba(255, 255, 255, 0.05)';
+            for (let i = 0; i < 512; i += 40) {
+                context.fillRect(i, 0, 2, 512);
+                context.fillRect(0, i, 512, 2);
+            }
+            
+            // Enhanced border with glow effect
+            context.strokeStyle = '#ffffff';
+            context.lineWidth = 6;
+            context.shadowColor = '#93C5FD';
+            context.shadowBlur = 20;
+            context.strokeRect(3, 3, 506, 506);
+            
+            // Reset shadow for text
+            context.shadowColor = 'transparent';
+            context.shadowBlur = 0;
+            
+            // Enhanced text with better visibility
+            context.font = 'bold 48px Poppins, Arial, sans-serif';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            
+            const lines = text.split('\n');
+            const lineHeight = 55;
+            const startY = 256 - (lines.length - 1) * lineHeight / 2;
+            
+            lines.forEach((line, index) => {
+                const y = startY + index * lineHeight;
+                
+                // Black outline for better contrast
+                context.strokeStyle = '#000000';
+                context.lineWidth = 8;
+                context.strokeText(line, 256, y);
+                
+                // White text
+                context.fillStyle = '#ffffff';
+                context.fillText(line, 256, y);
+            });
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            
+            return new THREE.MeshBasicMaterial({ 
+                map: texture, 
+                transparent: true, 
+                opacity: 0.3,
+                side: THREE.DoubleSide
+            });
+        }
+
+        function adjustBrightness(hex, percent) {
+            const num = parseInt(hex.replace("#", ""), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = (num >> 16) + amt;
+            const G = (num >> 8 & 0x00FF) + amt;
+            const B = (num & 0x0000FF) + amt;
+            return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+                (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+                (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+        }
+
+        // Create animated background particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.top = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 6 + 's';
+                particle.style.animationDuration = (Math.random() * 4 + 4) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Navigation with smooth transitions
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            setTimeout(() => {
+                document.getElementById(sectionId).classList.add('active');
+            }, 150);
+            
+            if (sectionId === 'home' && !cube) {
+                setTimeout(init3DCube, 200);
+            } else if (sectionId === 'quiz') {
+                loadQuestion();
+            }
+        }
+
+        // Enhanced theme toggle
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const icon = document.getElementById('theme-icon');
+            const text = document.getElementById('theme-text');
+            
+            if (document.body.classList.contains('light-mode')) {
+                icon.textContent = '☀️';
+                text.textContent = 'Modo Escuro';
+            } else {
+                icon.textContent = '🌙';
+                text.textContent = 'Modo Claro';
+            }
+        }
+
+        // Header scroll effect
+        function handleScroll() {
+            const header = document.getElementById('header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        }
+
+        // Quiz functionality
+        function loadQuestion() {
+            if (currentQuestionIndex >= questions.length) {
+                showQuizResults();
+                return;
+            }
+
+            const question = questions[currentQuestionIndex];
+            document.getElementById('question-text').textContent = question.text;
+            
+            const optionsContainer = document.getElementById('options');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, index) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'option glass';
+                optionDiv.textContent = `${String.fromCharCode(65 + index)}) ${option}`;
+                optionDiv.onclick = () => selectOption(index, optionDiv);
+                optionsContainer.appendChild(optionDiv);
+            });
+
+            updateQuizControls();
+        }
+
+        function selectOption(index, element) {
+            document.querySelectorAll('#options .option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            element.classList.add('selected');
+            userAnswers[currentQuestionIndex] = index;
+        }
+
+        function nextQuestion() {
+            if (userAnswers[currentQuestionIndex] !== undefined) {
+                const question = questions[currentQuestionIndex];
+                const isCorrect = userAnswers[currentQuestionIndex] === question.correct;
+                
+                if (isCorrect) {
+                    score++;
+                }
+
+                saveAnswer(question.id, userAnswers[currentQuestionIndex], question.correct, isCorrect, 'quiz');
+            }
+            
+            currentQuestionIndex++;
+            loadQuestion();
+        }
+
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                loadQuestion();
+            }
+        }
+
+        function updateQuizControls() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('total').textContent = currentQuestionIndex;
+            document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+            document.getElementById('next-btn').textContent = 
+                currentQuestionIndex === questions.length - 1 ? 'Finalizar' : 'Próxima →';
+        }
+
+        function showQuizResults() {
+            const percentage = Math.round((score / questions.length) * 100);
+            let message = '';
+            
+            if (percentage >= 80) {
+                message = '🎉 Excelente! Você domina o assunto!';
+            } else if (percentage >= 60) {
+                message = '👍 Bom trabalho! Continue praticando!';
+            } else {
+                message = '📚 Continue estudando para melhorar!';
+            }
+            
+            document.getElementById('question-text').innerHTML = `
+                <h3>Quiz Finalizado!</h3>
+                <p>${message}</p>
+                <p>Você acertou <strong>${score}</strong> de <strong>${questions.length}</strong> questões (<strong>${percentage}%</strong>)</p>
+                <button class="btn" onclick="restartQuiz()" style="margin-top: 30px;">🔄 Reiniciar Quiz</button>
+            `;
+            document.getElementById('options').innerHTML = '';
+        }
+
+        function restartQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            userAnswers = [];
+            loadQuestion();
+        }
+
+        // Simulator functionality
+        function startSimulator() {
+            simulatorActive = true;
+            simulatorCurrentIndex = 0;
+            simulatorTimeLeft = 900;
+            simulatorQuestions = [...questions].sort(() => Math.random() - 0.5).slice(0, 10);
+            
+            document.getElementById('start-sim-btn').style.display = 'none';
+            document.getElementById('sim-next-btn').style.display = 'inline-block';
+            
+            startTimer();
+            loadSimulatorQuestion();
+        }
+
+        function startTimer() {
+            updateTimerDisplay();
+            simulatorTimer = setInterval(() => {
+                simulatorTimeLeft--;
+                updateTimerDisplay();
+                
+                if (simulatorTimeLeft <= 0) {
+                    endSimulator();
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(simulatorTimeLeft / 60);
+            const seconds = simulatorTimeLeft % 60;
+            const timerElement = document.getElementById('timer');
+            timerElement.textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Add urgency color when time is running low
+            if (simulatorTimeLeft <= 300) { // 5 minutes
+                timerElement.style.color = '#EF4444';
+            } else if (simulatorTimeLeft <= 600) { // 10 minutes
+                timerElement.style.color = '#F59E0B';
+            }
+        }
+
+        function loadSimulatorQuestion() {
+            if (simulatorCurrentIndex >= simulatorQuestions.length) {
+                endSimulator();
+                return;
+            }
+
+            const question = simulatorQuestions[simulatorCurrentIndex];
+            document.getElementById('sim-question-text').textContent = question.text;
+            
+            const optionsContainer = document.getElementById('sim-options');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, index) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'option glass';
+                optionDiv.textContent = `${String.fromCharCode(65 + index)}) ${option}`;
+                optionDiv.onclick = () => selectSimOption(index, optionDiv);
+                optionsContainer.appendChild(optionDiv);
+            });
+
+            document.getElementById('sim-current').textContent = simulatorCurrentIndex + 1;
+            document.getElementById('sim-total').textContent = simulatorQuestions.length;
+        }
+
+        function selectSimOption(index, element) {
+            document.querySelectorAll('#sim-options .option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+            
+            element.classList.add('selected');
+            simulatorQuestions[simulatorCurrentIndex].userAnswer = index;
+        }
+
+        function nextSimQuestion() {
+            simulatorCurrentIndex++;
+            loadSimulatorQuestion();
+        }
+
+        function endSimulator() {
+            clearInterval(simulatorTimer);
+            simulatorActive = false;
+            
+            let simScore = 0;
+            simulatorQuestions.forEach(question => {
+                if (question.userAnswer === question.correct) {
+                    simScore++;
+                }
+                saveAnswer(question.id, question.userAnswer || -1, question.correct, 
+                          question.userAnswer === question.correct, 'simulator');
+            });
+            
+            const percentage = Math.round((simScore / simulatorQuestions.length) * 100);
+            let message = '';
+            
+            if (percentage >= 80) {
+                message = '🏆 Excelente desempenho! Você está preparado!';
+            } else if (percentage >= 60) {
+                message = '👍 Bom resultado! Continue se preparando!';
+            } else {
+                message = '📖 Estude mais para melhorar sua pontuação!';
+            }
+            
+            document.getElementById('sim-question-text').innerHTML = `
+                <h3>Simulado Finalizado!</h3>
+                <p>${message}</p>
+                <p>Você acertou <strong>${simScore}</strong> de <strong>${simulatorQuestions.length}</strong> questões (<strong>${percentage}%</strong>)</p>
+                <button class="btn" onclick="resetSimulator()" style="margin-top: 30px;">🔄 Novo Simulado</button>
+            `;
+            document.getElementById('sim-options').innerHTML = '';
+            document.getElementById('sim-next-btn').style.display = 'none';
+        }
+
+        function resetSimulator() {
+            document.getElementById('start-sim-btn').style.display = 'inline-block';
+            document.getElementById('sim-next-btn').style.display = 'none';
+            document.getElementById('timer').textContent = '15:00';
+            document.getElementById('timer').style.color = '';
+            document.getElementById('sim-question-text').textContent = 'Clique em "Iniciar Simulado" para começar o teste cronometrado';
+            document.getElementById('sim-options').innerHTML = '';
+            document.getElementById('sim-current').textContent = '0';
+        }
+
+        // Save answer function
+        async function saveAnswer(questionId, userAnswer, correctAnswer, isCorrect, quizType) {
+            if (!window.dataSdk) return;
+
+            if (currentRecordCount >= 999) {
+                console.warn("Limite máximo de 999 respostas atingido");
+                return;
+            }
+
+            try {
+                const answerData = {
+                    question_id: questionId,
+                    user_answer: userAnswer.toString(),
+                    correct_answer: correctAnswer.toString(),
+                    is_correct: isCorrect,
+                    timestamp: new Date().toISOString(),
+                    quiz_type: quizType
+                };
+
+                const result = await window.dataSdk.create(answerData);
+                if (!result.isOk) {
+                    console.error("Erro ao salvar resposta:", result.error);
+                }
+            } catch (error) {
+                console.error("Erro ao salvar resposta:", error);
+            }
+        }
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeSDKs();
+            createParticles();
+            init3DCube();
+            
+            // Add scroll listener
+            window.addEventListener('scroll', handleScroll);
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            if (simulatorTimer) {
+                clearInterval(simulatorTimer);
+            }
+        });
+    </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9964affb6120cd97',t:'MTc2MTc2MjAzMi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
